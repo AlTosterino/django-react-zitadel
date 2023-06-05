@@ -1,0 +1,59 @@
+networks:
+  zitadel_zitadel_test_network:
+    driver: bridge
+
+services:
+  zitadel:
+    restart: 'always'
+    networks:
+      - zitadel_test_network
+    image: 'ghcr.io/zitadel/zitadel:latest'
+    command: 'start-from-init --masterkey "MasterkeyNeedsToHave32Characters" --tlsMode disabled'
+    environment:
+      - 'ZITADEL_DATABASE_COCKROACH_HOST=crdb'
+      - 'ZITADEL_EXTERNALSECURE=false'
+    depends_on:
+      crdb:
+        condition: 'service_healthy'
+    ports:
+      - '8080:8080'
+
+  crdb:
+    restart: 'always'
+    networks:
+      - zitadel_test_network
+    image: 'cockroachdb/cockroach:v22.2.2'
+    command: 'start-single-node --insecure'
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/health?ready=1" ]
+      interval: '10s'
+      timeout: '30s'
+      retries: 5
+      start_period: '20s'
+    ports:
+      - '9090:8080'
+      - '26257:26257'
+
+  api:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/api
+    command: bash -c "poetry run python manage.py runserver 0.0.0.0:8000"
+    environment:
+      - ZITADEL_CLIENT_ID=EXAMPLE
+      - ZITADEL_CLIENT_SECRET=EXAMPLE
+    networks:
+      - zitadel_test_network
+
+  web:
+    build: ./frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/front
+      - /front/node_modules
+    command: bash -c "npm run dev-docker"
+    networks:
+      - zitadel_test_network
