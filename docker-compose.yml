@@ -22,7 +22,7 @@ services:
     restart: 'always'
     networks:
       - zitadel_test_network
-    image: 'cockroachdb/cockroach:v22.2.2'
+    image: 'cockroachdb/cockroach:v24.2.0'
     command: 'start-single-node --insecure'
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8080/health?ready=1" ]
